@@ -3,24 +3,32 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "concurrently \"yarn:dev:*\" --names \"frontend,server\" --prefix-colors \"cyan,magenta\"",
+    "dev:frontend": "next dev --webpack",
+    "dev:server": "cd server && yarn dev",
+    "build": "yarn build:frontend && yarn build:server",
+    "build:frontend": "next build --webpack",
+    "build:server": "cd server && yarn build",
+    "start": "concurrently \"yarn:start:*\" --names \"frontend,server\" --prefix-colors \"cyan,magenta\"",
+    "start:frontend": "next start",
+    "start:server": "cd server && yarn start",
+    "lint": "eslint",
+    "install:all": "yarn install && cd server && yarn install"
   },
   "dependencies": {
+    "next": "16.0.1",
     "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "next": "16.0.1"
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
-    "eslint-config-next": "16.0.1"
+    "eslint-config-next": "16.0.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }

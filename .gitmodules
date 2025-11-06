@@ -1,0 +1,6 @@
+[submodule "server"]
+	path = server
+	url = https://github.com/gmkung/cheemera
+[submodule ".claude/skills/cheemera-parser"]
+	path = .claude/skills/cheemera-parser
+	url = https://github.com/gmkung/cheemera-parser-claude-skill
