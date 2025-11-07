@@ -21,6 +21,8 @@ export default function Home() {
   const [showBeliefModal, setShowBeliefModal] = useState(false);
   const [hoveredBelief, setHoveredBelief] = useState<Belief | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Load belief sets on mount
   useEffect(() => {
@@ -38,6 +40,14 @@ export default function Home() {
     }
   }, [selectedBeliefSet]);
 
+  // Auto-run explore when selectors change
+  useEffect(() => {
+    const activeTab = tabs.find(t => t.id === activeTabId);
+    if (activeTab && activeTab.selectors.length > 0 && selectedBeliefSet) {
+      runExplore(activeTabId);
+    }
+  }, [tabs.find(t => t.id === activeTabId)?.selectors]);
+
   const handleBeliefSetChange = (fileName: string) => {
     const beliefSet = beliefSets.find(bs => bs.fileName === fileName);
     setSelectedBeliefSet(beliefSet || null);
@@ -54,12 +64,12 @@ export default function Home() {
     setActiveTabId('1');
   };
 
-  const addSelector = (tabId: string) => {
+  const addSelector = (tabId: string, sentence?: string) => {
     setTabs(tabs.map(tab => {
       if (tab.id === tabId) {
         return {
           ...tab,
-          selectors: [...tab.selectors, { sentence: availableSentences[0] || '', valence: true }]
+          selectors: [...tab.selectors, { sentence: sentence || availableSentences[0] || '', valence: true }]
         };
       }
       return tab;
@@ -182,6 +192,28 @@ export default function Home() {
         setHoveredBelief(belief);
       }
     }
+  };
+
+  // Helper function to format property display (DRY principle)
+  const formatProperty = (sentence: string, valence: boolean) => {
+    const lowercaseSentence = sentence.charAt(0).toLowerCase() + sentence.slice(1);
+    return (
+      <>
+        {valence ? (
+          <>
+            <span style={{ fontStyle: 'italic', opacity: 0.8 }}>It is true that </span>
+            {lowercaseSentence}
+          </>
+        ) : (
+          <>
+            <span style={{ fontStyle: 'italic', opacity: 0.8 }}>It is </span>
+            <span style={{ fontWeight: 'bold', fontStyle: 'italic', opacity: 0.8 }}>not</span>
+            <span style={{ fontStyle: 'italic', opacity: 0.8 }}> true that </span>
+            {lowercaseSentence}
+          </>
+        )}
+      </>
+    );
   };
 
 
@@ -341,92 +373,106 @@ export default function Home() {
                 Explore Properties
               </h2>
 
-              {activeTab.selectors.map((selector, index) => (
-                <div key={index} className="flex gap-4 items-center mb-3">
-                  <select
-                    value={selector.sentence}
-                    onChange={(e) => updateSelector(activeTab.id, index, 'sentence', e.target.value)}
-                    className="flex-1 px-3 py-2 border rounded-lg"
-                    style={{
-                      borderColor: '#1e3a5f',
-                      backgroundColor: '#0a1929',
-                      color: '#e3f2fd'
-                    }}
-                  >
-                    {availableSentences.map(sentence => (
-                      <option key={sentence} value={sentence}>
-                        {sentence}
-                      </option>
-                    ))}
-                  </select>
+              {activeTab.selectors.map((selector, index) => {
+                const bgColor = selector.valence ? '#4d7c8a' : '#8a5563';
+                const borderColor = selector.valence ? '#4d7c8a' : '#8a5563';
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => updateSelector(activeTab.id, index, 'valence', true)}
-                      className="px-4 py-2 rounded-lg font-medium"
+                return (
+                  <div key={index} className="flex gap-3 items-center mb-3">
+                    <div
+                      className="flex-1 p-3 rounded-lg border cursor-pointer"
                       style={{
-                        backgroundColor: selector.valence ? '#4d7c8a' : '#0a1929',
-                        color: selector.valence ? 'white' : '#4d7c8a',
-                        border: '1px solid #4d7c8a'
+                        backgroundColor: bgColor,
+                        borderColor: borderColor
                       }}
+                      onClick={() => updateSelector(activeTab.id, index, 'valence', !selector.valence)}
                     >
-                      True
-                    </button>
+                      <p style={{ color: '#e3f2fd' }}>
+                        {formatProperty(selector.sentence, selector.valence)}
+                      </p>
+                    </div>
+
                     <button
-                      onClick={() => updateSelector(activeTab.id, index, 'valence', false)}
-                      className="px-4 py-2 rounded-lg font-medium"
+                      onClick={() => removeSelector(activeTab.id, index)}
+                      className="px-3 py-2 rounded-lg font-medium"
                       style={{
-                        backgroundColor: !selector.valence ? '#8a5563' : '#0a1929',
-                        color: !selector.valence ? 'white' : '#8a5563',
+                        backgroundColor: '#8a5563',
+                        color: 'white',
                         border: '1px solid #8a5563'
                       }}
                     >
-                      False
+                      Remove
                     </button>
                   </div>
+                );
+              })}
 
-                  <button
-                    onClick={() => removeSelector(activeTab.id, index)}
-                    className="px-3 py-2 rounded-lg font-medium"
+              {/* Search input for filtering sentences */}
+              <div className="mt-2">
+                <input
+                  type="text"
+                  placeholder="Search sentences..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  style={{
+                    borderColor: '#1e3a5f',
+                    backgroundColor: '#0a1929',
+                    color: '#e3f2fd'
+                  }}
+                />
+
+                {/* Filtered sentences list */}
+                {isSearchFocused && (
+                  <div
+                    className="mt-2 border rounded-lg max-h-60 overflow-y-auto"
                     style={{
-                      backgroundColor: '#8a5563',
-                      color: 'white',
-                      border: '1px solid #8a5563'
+                      borderColor: '#1e3a5f',
+                      backgroundColor: '#0a1929'
                     }}
                   >
-                    Remove
-                  </button>
-                </div>
-              ))}
-
-              <button
-                onClick={() => addSelector(activeTab.id)}
-                className="px-4 py-2 rounded-lg font-medium mt-2"
-                style={{
-                  backgroundColor: '#90caf9',
-                  color: '#0a1929',
-                  border: '1px solid #90caf9'
-                }}
-              >
-                + Add Property
-              </button>
+                    {availableSentences
+                      .filter(sentence =>
+                        !activeTab.selectors.some(s => s.sentence === sentence) &&
+                        sentence.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map(sentence => (
+                        <div
+                          key={sentence}
+                          className="px-3 py-2 cursor-pointer hover:bg-opacity-80"
+                          style={{
+                            color: '#e3f2fd',
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#1e3a5f';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                          onClick={() => {
+                            addSelector(activeTab.id, sentence);
+                            setSearchQuery('');
+                          }}
+                        >
+                          {sentence}
+                        </div>
+                      ))}
+                    {availableSentences
+                      .filter(sentence =>
+                        !activeTab.selectors.some(s => s.sentence === sentence) &&
+                        sentence.toLowerCase().includes(searchQuery.toLowerCase())
+                      ).length === 0 && (
+                      <div className="px-3 py-2" style={{ color: '#90caf9', opacity: 0.6 }}>
+                        No sentences found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* Run Explore Button */}
-            <button
-              onClick={() => runExplore(activeTab.id)}
-              disabled={activeTab.isLoading || activeTab.selectors.length === 0}
-              className="px-6 py-3 rounded-lg font-bold text-lg mb-6"
-              style={{
-                backgroundColor: activeTab.isLoading || activeTab.selectors.length === 0 ? '#1e3a5f' : '#42a5f5',
-                color: 'white',
-                cursor: activeTab.isLoading || activeTab.selectors.length === 0 ? 'not-allowed' : 'pointer',
-                border: `2px solid ${activeTab.isLoading || activeTab.selectors.length === 0 ? '#1e3a5f' : '#42a5f5'}`,
-                opacity: activeTab.isLoading || activeTab.selectors.length === 0 ? 0.5 : 1
-              }}
-            >
-              {activeTab.isLoading ? 'Exploring...' : 'Run Explore'}
-            </button>
 
             {/* Results */}
             {activeTab.result && activeTab.result.results && (
@@ -479,13 +525,7 @@ export default function Home() {
                                 <span className="font-medium" style={{ color: '#90caf9' }}>
                                   {index + 1}.
                                 </span>{' '}
-                                {prop.valence ? (
-                                  <>It is true that {prop.sentence}</>
-                                ) : (
-                                  <>
-                                    It is <span style={{ fontWeight: 'bold' }}>not</span> true that {prop.sentence}
-                                  </>
-                                )}
+                                {formatProperty(prop.sentence, prop.valence)}
                               </p>
                             </div>
                           );
